@@ -5,7 +5,7 @@ from tkinter import filedialog
 import numpy as np
 from PIL import Image, ImageTk
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
+
 
 class App:
     # the init method in python refers to the constructor of the class
@@ -17,13 +17,18 @@ class App:
         self.font="Calibri 20 bold" #class variable that stores font style
         self.fg = "white" #class variable that stores font color
         
+        #modifying the title and bg color
         tkObject.title("Image Color Palette Generator") #app title
-        tkObject["background"] = self.bg #setting the app background color
+        tkObject ["background"] = self.bg #setting the app background color
+    
+    
+    
     
         #1- label is a widget that can show us text or an image
-        self.img_text_label = tk.Label(tkObject, fg=self.fg, font=self.font, bg=self.bg, padx = 50, pady=50,text="Color Palette Generator")
+        self.img_text_label = tk.Label(tkObject, fg = self.fg, font=self.font, bg=self.bg, padx = 50, pady=50, text="Color Palette Generator")
         #2- packing "attaching" the widget to the screen or the app, without this method the widget won't appear on the screen
         self.img_text_label.pack()
+
 
         self.img_button = tk.Button(tkObject, fg=self.fg, bg=self.bg, font=self.font, text="Select Image", command=self.open_image)
         self.img_button.pack()
@@ -64,6 +69,8 @@ class App:
         self.m4 = tk.Label(tkObject,  bg=self.bg, pady = 15)
         self.m4.pack()
         
+        tkObject.mainloop()
+        
 
     #this function is executed after clicking the "Select Image" button
     def open_image(self):
@@ -79,7 +86,7 @@ class App:
         
         #reading the image from the file and resizing it to 5 times less so the processing is faster
         image = cv2.imread(file_path)
-        image= cv2.resize(image, None, fx=0.2, fy=0.2)
+        image= cv2.resize(image, None, fx=1/5, fy=1/5)
 
 
 
@@ -101,36 +108,43 @@ class App:
         
         
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = image.reshape((image.shape[0] * image.shape[1], 3))
+        image = image.reshape( [ image.shape[0]*image.shape[1] , 3 ] )
 
         
         #number of groups that the knn model will output, in our case it's the number of colors in the color palette
         number_of_clusters = 5      
-        clt = KMeans(number_of_clusters)
+        clt = KMeans( number_of_clusters )
         
         #knn model process the image
         clt.fit(image)
         
 
         hist = np.bincount(clt.labels_).astype("float")
-        hist/=hist.sum()
+        hist /= hist.sum()
 
         print(hist)
-        print("***************************************************")
+        print("labels :")
         print(clt.labels_)
-        print("***************************************************")
+        print("cluster centers :")
         print(clt.cluster_centers_)
 
         self.display_palette(hist, clt.cluster_centers_, file_path)
+
+
+
+
 
     def display_palette(self, hist , centroids, file_path):
 
         #displaying the chosen image
         cv_img_bgr = cv2.imread(file_path)
         cv_img_rgb = cv2.cvtColor(cv_img_bgr, cv2.COLOR_BGR2RGB)
+        
         pil_image = Image.fromarray(cv_img_rgb)
         image_resized = pil_image.resize((250,250))
         tk_image = ImageTk.PhotoImage(image=image_resized)
+        
+        #update ui image
         self.img_label.configure(image=tk_image)
         self.img_label.image=tk_image
 
@@ -143,21 +157,28 @@ class App:
             
         self.palette_codes.configure(text=text[:-6])
         
+        
+        
         # Create our blank barchart
-        bar = np.zeros((100, 500, 3), dtype = "uint8")
+        bar = np.zeros( (100, 500, 3) , dtype = "uint8")
+
 
         x_start = 0
         # iterate over the percentage and dominant color of each cluster
         for (percent, color) in zip(hist, centroids):
+            
           # plot the relative percentage of each cluster
           end = x_start + (percent * 500)
           cv2.rectangle(bar, (int(x_start), 0), (int(end), 100), color.astype("uint8").tolist(), -1)
           x_start = end
 
+
+        #convert the opencv image to tkinter image
         pil_image = Image.fromarray(bar)
         tk_image = ImageTk.PhotoImage(image=pil_image)
 
-        
+
+        #update tkinter ui image
         self.palette_image.configure(image=tk_image)
         self.palette_image.image=tk_image
 
@@ -165,4 +186,4 @@ class App:
 
 root = tk.Tk()
 app = App(root)
-root.mainloop()
+
